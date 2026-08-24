@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "qrs"
+version = "0.1.0"
+description = "Hybrid quantum-classical remote sensing classifier"
+requires-python = ">=3.10"
+dependencies = [
+    "torch>=2.0",
+    "pennylane>=0.43",
+    "pennylane-lightning",
+    "numpy",
+    "pyyaml",
+    "scikit-learn",
+    "pandas",
+    "pillow",
+    "truststore",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "ruff", "matplotlib"]
+
+[tool.setuptools.packages.find]
+include = ["qrs*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"

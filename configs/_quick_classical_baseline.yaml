@@ -1,0 +1,4 @@
+extends: base.yaml
+arm: classical
+epochs: 15
+seeds: [0, 1]

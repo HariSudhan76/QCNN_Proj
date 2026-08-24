@@ -1,0 +1,3 @@
+extends: base.yaml
+arm: quantum_attn
+attention: true

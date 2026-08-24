@@ -1,0 +1,29 @@
+arm: classical  # classical | quantum | control | quantum_attn | fused
+
+dataset: eurosat
+data_dir: data/eurosat
+cache_dir: data/cache
+image_size: 64
+split: [0.70, 0.15, 0.15]
+
+epochs: 30
+batch_size: 32
+optimizer: adam
+lr: 1.0e-3
+
+early_stopping:
+  monitor: val_loss
+  patience: 5
+
+seeds: [0, 1, 2, 3, 4]
+
+feature_width: 128
+
+n_qubits: 8
+n_layers: 3
+entangle: true
+data_reuploading: false
+
+attention: false
+
+results_csv: results/results.csv
