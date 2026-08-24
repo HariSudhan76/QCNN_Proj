@@ -1,4 +1,8 @@
-from qrs.train.callbacks import EarlyStopping
+import torch
+
+from qrs.config import Config
+from qrs.models.build import build_model
+from qrs.train.callbacks import EarlyStopping, checkpoint_path, load_checkpoint, save_checkpoint
 
 
 def test_stops_after_patience_epochs_without_improvement():
@@ -17,3 +21,27 @@ def test_tracks_best_value():
     for v in [1.0, 0.5, 0.8]:
         es.step(v)
     assert es.best == 0.5
+
+
+def test_checkpoint_path_naming(tmp_path):
+    path = checkpoint_path(tmp_path, "classical", 3)
+    assert path == tmp_path / "classical_seed3.pt"
+
+
+def test_save_and_load_checkpoint_roundtrip(tmp_path):
+    config = Config(arm="classical", feature_width=16)
+    model = build_model(config)
+    x = torch.rand(2, 4, 64, 64)
+    with torch.no_grad():
+        original_out = model(x)
+
+    path = checkpoint_path(tmp_path, config.arm, seed=0)
+    save_checkpoint(model, path)
+    assert path.exists()
+
+    fresh_model = build_model(config)
+    load_checkpoint(fresh_model, path)
+    with torch.no_grad():
+        loaded_out = fresh_model(x)
+
+    assert torch.allclose(original_out, loaded_out)

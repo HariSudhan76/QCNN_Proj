@@ -43,6 +43,7 @@ class Config:
     attention: bool = False
 
     results_csv: str = "results/results.csv"
+    checkpoint_dir: str = "results/checkpoints"
 
     def __post_init__(self) -> None:
         if isinstance(self.split, list):

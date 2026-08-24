@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
+
+import torch
+import torch.nn as nn
 
 
 class EarlyStopping:
@@ -34,3 +38,18 @@ class EarlyStopping:
             if self.counter >= self.patience:
                 self.should_stop = True
         return self.should_stop
+
+
+def checkpoint_path(checkpoint_dir: str | Path, arm: str, seed: int) -> Path:
+    return Path(checkpoint_dir) / f"{arm}_seed{seed}.pt"
+
+
+def save_checkpoint(model: nn.Module, path: str | Path) -> None:
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    torch.save(model.state_dict(), path)
+
+
+def load_checkpoint(model: nn.Module, path: str | Path, map_location: str = "cpu") -> nn.Module:
+    model.load_state_dict(torch.load(path, map_location=map_location))
+    return model

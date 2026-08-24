@@ -13,6 +13,7 @@ from qrs.config import Config, load_config
 from qrs.data.loaders import build_dataloaders
 from qrs.models.build import build_model
 from qrs.seeds import set_all_seeds
+from qrs.train.callbacks import checkpoint_path, save_checkpoint
 from qrs.train.loop import train_model
 
 
@@ -30,10 +31,14 @@ def run(config: Config) -> None:
         row = {"arm": config.arm, "dataset": config.dataset, "seed": seed, "git_sha": git_sha, **metrics}
         append_result(row, config.results_csv)
 
+        ckpt_path = checkpoint_path(config.checkpoint_dir, config.arm, seed)
+        save_checkpoint(model, ckpt_path)
+
         print(
             f"[seed={seed}] f1_weighted={metrics['f1_weighted']:.4f} "
             f"accuracy={metrics['accuracy']:.4f} epochs_run={metrics['epochs_run']} "
-            f"train_wallclock_s={metrics['train_wallclock_s']:.1f}"
+            f"train_wallclock_s={metrics['train_wallclock_s']:.1f} "
+            f"checkpoint={ckpt_path}"
         )
 
 
