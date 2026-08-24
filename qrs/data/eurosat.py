@@ -14,6 +14,7 @@ import warnings
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.error import URLError
 from urllib.request import urlretrieve
 
 import truststore
@@ -58,7 +59,14 @@ def download_eurosat(data_dir: str | Path) -> Path:
     if not zip_path.exists():
         try:
             urlretrieve(EUROSAT_URL, zip_path)
-        except ssl.SSLCertVerificationError:
+        except URLError as err:
+            # urlopen wraps the underlying ssl.SSLCertVerificationError in a
+            # URLError rather than letting it propagate directly -- catch
+            # that wrapper and check the real cause so we don't swallow
+            # unrelated network errors (DNS failures, timeouts, etc.).
+            if not isinstance(err.reason, ssl.SSLCertVerificationError):
+                raise
+
             # madm.dfki.de is known to omit an intermediate certificate from
             # its chain. Windows' Schannel auto-fetches the missing
             # intermediate (AIA chasing) so `truststore` succeeds there, but
