@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import json
 import random
+import ssl
+import warnings
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -54,7 +56,32 @@ def download_eurosat(data_dir: str | Path) -> Path:
 
     zip_path = data_dir / "EuroSAT.zip"
     if not zip_path.exists():
-        urlretrieve(EUROSAT_URL, zip_path)
+        try:
+            urlretrieve(EUROSAT_URL, zip_path)
+        except ssl.SSLCertVerificationError:
+            # madm.dfki.de is known to omit an intermediate certificate from
+            # its chain. Windows' Schannel auto-fetches the missing
+            # intermediate (AIA chasing) so `truststore` succeeds there, but
+            # Linux/OpenSSL (Colab included) does not, so verification fails
+            # even with a correct trust store. This is a known-benign,
+            # non-sensitive public benchmark dataset from its official
+            # academic host -- fall back to an unverified download rather
+            # than blocking the pipeline, but do so loudly.
+            warnings.warn(
+                "TLS verification of madm.dfki.de failed (missing intermediate "
+                "cert in its chain -- expected on Linux/Colab). Retrying the "
+                "EuroSAT download WITHOUT certificate verification.",
+                stacklevel=2,
+            )
+            # urlretrieve has no `context` param; the documented way to scope
+            # an unverified context to a single call is to swap the default
+            # HTTPS context builder for the duration of that call.
+            previous_context_factory = ssl._create_default_https_context
+            ssl._create_default_https_context = ssl._create_unverified_context
+            try:
+                urlretrieve(EUROSAT_URL, zip_path)
+            finally:
+                ssl._create_default_https_context = previous_context_factory
 
     with zipfile.ZipFile(zip_path) as zf:
         zf.extractall(data_dir)
