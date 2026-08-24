@@ -21,6 +21,7 @@ def run(config: Config) -> None:
     git_sha = get_git_sha()
 
     for seed in config.seeds:
+        print(f"[seed={seed}] starting (arm={config.arm})", flush=True)
         set_all_seeds(seed)
 
         train_loader, val_loader, test_loader = build_dataloaders(config, seed)
@@ -35,10 +36,11 @@ def run(config: Config) -> None:
         save_checkpoint(model, ckpt_path)
 
         print(
-            f"[seed={seed}] f1_weighted={metrics['f1_weighted']:.4f} "
+            f"[seed={seed}] done f1_weighted={metrics['f1_weighted']:.4f} "
             f"accuracy={metrics['accuracy']:.4f} epochs_run={metrics['epochs_run']} "
             f"train_wallclock_s={metrics['train_wallclock_s']:.1f} "
-            f"checkpoint={ckpt_path}"
+            f"checkpoint={ckpt_path}",
+            flush=True,
         )
 
 

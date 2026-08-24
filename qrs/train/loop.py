@@ -55,6 +55,7 @@ def train_model(
     val_loader: DataLoader,
     test_loader: DataLoader,
     device: str = "cpu",
+    verbose: bool = True,
 ) -> dict:
     if config.optimizer != "adam":
         raise NotImplementedError(f"optimizer {config.optimizer!r} not supported")
@@ -67,15 +68,35 @@ def train_model(
     epochs_run = 0
     train_start = time.time()
     for epoch in range(config.epochs):
-        _run_epoch(model, train_loader, optimizer, criterion, device, train=True)
+        epoch_start = time.time()
+        train_loss, _, _ = _run_epoch(model, train_loader, optimizer, criterion, device, train=True)
         val_loss, _, _ = _run_epoch(model, val_loader, None, criterion, device, train=False)
         epochs_run = epoch + 1
+
+        if verbose:
+            # flush=True matters here: a long unattended run (quantum arm,
+            # redirected to a log file or a notebook cell) is otherwise
+            # silent for its full duration under Python's default stdout
+            # buffering, indistinguishable from a hang.
+            print(
+                f"    epoch {epochs_run}/{config.epochs} "
+                f"train_loss={train_loss:.4f} val_loss={val_loss:.4f} "
+                f"epoch_time={time.time() - epoch_start:.1f}s "
+                f"total_elapsed={time.time() - train_start:.1f}s",
+                flush=True,
+            )
 
         if early_stopping.is_improvement(val_loss):
             early_stopping.best_state = {
                 k: v.detach().clone() for k, v in model.state_dict().items()
             }
         if early_stopping.step(val_loss):
+            if verbose:
+                print(
+                    f"    early stopping at epoch {epochs_run} "
+                    f"(no val_loss improvement for {config.early_stopping.patience} epochs)",
+                    flush=True,
+                )
             break
     train_wallclock_s = time.time() - train_start
 
