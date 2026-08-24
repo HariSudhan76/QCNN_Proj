@@ -15,7 +15,7 @@ import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.error import URLError
-from urllib.request import urlretrieve
+from urllib.request import HTTPSHandler, build_opener, urlretrieve
 
 import truststore
 
@@ -81,15 +81,34 @@ def download_eurosat(data_dir: str | Path) -> Path:
                 "EuroSAT download WITHOUT certificate verification.",
                 stacklevel=2,
             )
-            # urlretrieve has no `context` param; the documented way to scope
-            # an unverified context to a single call is to swap the default
-            # HTTPS context builder for the duration of that call.
-            previous_context_factory = ssl._create_default_https_context
-            ssl._create_default_https_context = ssl._create_unverified_context
+            # Two things stand between us and an actually-unverified retry:
+            #
+            # 1. urlretrieve has no `context` param, and urlopen lazily
+            #    builds a module-level opener on first use and caches it --
+            #    the first (failed) call above already bound an HTTPSHandler
+            #    to the truststore-verified context, so reassigning
+            #    ssl._create_default_https_context afterwards wouldn't touch
+            #    that cached handler. Build a fresh opener with an explicit
+            #    context and use it directly instead.
+            # 2. truststore.inject_into_ssl() (module import time, above)
+            #    replaced ssl.SSLContext globally with one whose wrap_socket
+            #    calls _verify_peercerts() unconditionally, ignoring
+            #    verify_mode entirely -- so ssl._create_unverified_context()
+            #    would still construct a truststore.SSLContext and still
+            #    force real verification. Must extract_from_ssl() first to
+            #    get a genuinely bypassable stdlib context, then re-inject
+            #    afterward.
+            truststore.extract_from_ssl()
             try:
-                urlretrieve(EUROSAT_URL, zip_path)
+                unverified_opener = build_opener(
+                    HTTPSHandler(context=ssl._create_unverified_context())
+                )
+                with unverified_opener.open(EUROSAT_URL) as resp, open(
+                    zip_path, "wb"
+                ) as out_file:
+                    out_file.write(resp.read())
             finally:
-                ssl._create_default_https_context = previous_context_factory
+                truststore.inject_into_ssl()
 
     with zipfile.ZipFile(zip_path) as zf:
         zf.extractall(data_dir)
