@@ -5,6 +5,23 @@ from qrs.config import Config
 from qrs.models.build import build_model
 
 
+@pytest.mark.parametrize("arm", ["classical", "quantum", "control", "quantum_attn"])
+@pytest.mark.parametrize("backbone_variant", ["large", "small"])
+def test_all_arms_build_with_both_backbone_variants(arm, backbone_variant):
+    # 4 arms x 2 backbone variants = 8 combinations; each must build and do a
+    # forward pass with no shape error, whether the backbone emits 128-d
+    # (large) or 24-d (small) features.
+    config = Config(
+        arm=arm,
+        backbone_variant=backbone_variant,
+        n_qubits=4,
+        n_layers=2,
+    )
+    model = build_model(config)
+    out = model(torch.rand(2, 4, 64, 64))
+    assert out.shape == (2, 10)
+
+
 def test_classical_arm_forward_shape():
     config = Config(arm="classical", feature_width=16)
     model = build_model(config)

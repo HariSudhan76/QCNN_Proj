@@ -17,6 +17,7 @@ dependencies = [
     "pandas",
     "pillow",
     "truststore",
+    "psutil",
 ]
 
 [project.optional-dependencies]

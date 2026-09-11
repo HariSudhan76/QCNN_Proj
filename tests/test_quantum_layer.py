@@ -1,7 +1,38 @@
 import pytest
 import torch
 
+from qrs.config import Config
+from qrs.models.build import build_model
 from qrs.models.quantum_layer import QuantumLayer
+
+
+@pytest.mark.parametrize(
+    "n_qubits, n_layers",
+    [(2, 2), (4, 2), (6, 3), (6, 6)],  # sweep budgets: 12 / 24 / 54 / 108 params
+)
+def test_quantum_arm_param_count_across_sweep_budgets(n_qubits, n_layers):
+    config = Config(
+        arm="quantum",
+        backbone_variant="small",
+        n_qubits=n_qubits,
+        n_layers=n_layers,
+    )
+    model = build_model(config)
+    assert model.n_quantum_params == n_qubits * n_layers * 3
+
+
+def test_quantum_layers_at_different_sizes_do_not_share_circuit_state():
+    # Each QuantumLayer must build its own device/qnode/weights from its
+    # constructor args -- no module- or class-level caching that would carry a
+    # stale circuit from a previous (n_qubits, n_layers) into the next.
+    small = QuantumLayer(n_qubits=2, n_layers=2)
+    big = QuantumLayer(n_qubits=6, n_layers=3)
+
+    assert small.qlayer.qnode.device is not big.qlayer.qnode.device
+    assert small.n_quantum_params == 12
+    assert big.n_quantum_params == 54
+    assert small(torch.rand(2, 2)).shape == (2, 2)
+    assert big(torch.rand(2, 6)).shape == (2, 6)
 
 
 @pytest.mark.parametrize("entangle", [True, False])

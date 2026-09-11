@@ -46,15 +46,23 @@ def build_model(config: Config) -> nn.Module:
     use_attention = config.attention or config.arm == "quantum_attn"
     attention = ChannelAttentionGate(n_channels=4) if use_attention else None
 
-    backbone = Backbone(in_channels=4, feature_width=config.feature_width)
+    backbone = Backbone(
+        in_channels=4,
+        feature_width=config.feature_width,
+        variant=config.backbone_variant,
+    )
+    # Read the backbone's real output width rather than assuming config.feature_width
+    # -- the "small" variant is a fixed 8/16/24 architecture whose output is 24,
+    # independent of config.feature_width.
+    feat_width = backbone.feature_width
     n_classes = len(CLASSES)
 
     if effective_arm == "classical":
-        head = ClassifierHead(config.feature_width, n_classes)
+        head = ClassifierHead(feat_width, n_classes)
         return ArmModel(backbone, nn.Identity(), head, attention)
 
     if effective_arm == "quantum":
-        compression = nn.Linear(config.feature_width, config.n_qubits)
+        compression = nn.Linear(feat_width, config.n_qubits)
         quantum = QuantumLayer(
             n_qubits=config.n_qubits,
             n_layers=config.n_layers,
@@ -67,7 +75,7 @@ def build_model(config: Config) -> nn.Module:
         return ArmModel(backbone, middle, head, attention)
 
     if effective_arm == "control":
-        compression = nn.Linear(config.feature_width, config.n_qubits)
+        compression = nn.Linear(feat_width, config.n_qubits)
         target_params = quantum_param_count(config.n_qubits, config.n_layers)
         control = build_parameter_matched_control(config.n_qubits, config.n_qubits, target_params)
         middle = nn.Sequential(compression, control)

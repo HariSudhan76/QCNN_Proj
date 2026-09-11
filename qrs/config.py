@@ -33,6 +33,7 @@ class Config:
 
     seeds: tuple[int, ...] = (0, 1, 2, 3, 4)
 
+    backbone_variant: str = "large"
     feature_width: int = 128
 
     n_qubits: int = 8
@@ -57,9 +58,16 @@ class Config:
             raise ValueError(f"split must sum to 1.0, got {self.split}")
         if self.n_qubits < 2:
             raise ValueError(f"n_qubits must be >= 2, got {self.n_qubits}")
+        if self.n_layers < 1:
+            raise ValueError(f"n_layers must be >= 1, got {self.n_layers}")
         valid_arms = {"classical", "quantum", "control", "quantum_attn", "fused"}
         if self.arm not in valid_arms:
             raise ValueError(f"arm must be one of {valid_arms}, got {self.arm!r}")
+        valid_variants = {"large", "small"}
+        if self.backbone_variant not in valid_variants:
+            raise ValueError(
+                f"backbone_variant must be one of {valid_variants}, got {self.backbone_variant!r}"
+            )
 
 
 def load_config(path: str | Path) -> Config:
