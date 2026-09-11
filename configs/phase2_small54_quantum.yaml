@@ -1,0 +1,6 @@
+extends: base.yaml
+arm: quantum
+backbone_variant: small
+n_qubits: 6
+n_layers: 3
+seeds: [0, 1, 2]
