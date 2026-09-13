@@ -1,0 +1,2 @@
+extends: phase2_small54_quantum.yaml
+seeds: [2]
