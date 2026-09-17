@@ -70,8 +70,9 @@ def tile_orthophotos(
 
     img_paths = sorted(images_dir.glob("*.tif"))
     mask_paths = sorted(masks_dir.glob("*.tif"))
+    print(f"tiling {len(img_paths)} orthophotos into {output_dir} ...", flush=True)
 
-    for img_path, mask_path in zip(img_paths, mask_paths):
+    for i, (img_path, mask_path) in enumerate(zip(img_paths, mask_paths)):
         img_name = img_path.stem
         mask_name = mask_path.stem
         img = Image.open(img_path).convert("RGB")
@@ -97,6 +98,8 @@ def tile_orthophotos(
                     img.crop(box).save(output_dir / f"{img_name}_{k}.jpg")
                     mask.crop(box).save(output_dir / f"{mask_name}_{k}_m.png")
                 k += 1
+
+        print(f"  tiled {img_name} ({i + 1}/{len(img_paths)})", flush=True)
 
     return output_dir
 
