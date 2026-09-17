@@ -20,6 +20,12 @@ def test_encoder_output_shape_and_bottleneck_spatial_size():
         assert skip.shape == (2, ch, size, size)
 
 
+def test_encoder_rejects_size_not_divisible_by_32():
+    encoder = UNetEncoder(in_channels=4)
+    with pytest.raises(ValueError, match="divisible by 32"):
+        encoder(torch.rand(1, 4, 16, 16))
+
+
 def test_decoder_reconstructs_input_spatial_size():
     encoder = UNetEncoder(in_channels=4)
     decoder = UNetDecoder(bottleneck_channels=encoder.out_channels, n_classes=len(CLASSES))

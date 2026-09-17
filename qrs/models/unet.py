@@ -48,6 +48,14 @@ class UNetEncoder(nn.Module):
         self.out_channels = ENCODER_CHANNELS[-1]
 
     def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, list[torch.Tensor]]:
+        divisor = 2 ** len(ENCODER_CHANNELS)
+        h, w = x.shape[-2], x.shape[-1]
+        if h % divisor != 0 or w % divisor != 0:
+            raise ValueError(
+                f"UNetEncoder needs H and W divisible by {divisor} (5 poolings), "
+                f"got {h}x{w}. Use a tile_size that's a multiple of {divisor}."
+            )
+
         skips = []
         for block in self.blocks:
             x = block(x)
