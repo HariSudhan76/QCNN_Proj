@@ -1,0 +1,38 @@
+# Shared settings for the LandCover.ai segmentation experiments.
+# NOT built with `extends: base.yaml` -- several of that file's fields
+# (feature_width, image_size, split) are classification-specific and would
+# be misleading here; this file is self-contained instead.
+
+task: segmentation
+arm: classical  # classical | quantum | control
+
+dataset: landcover
+# data_dir: the Kaggle-attached LandCover.ai dataset root (read-only), the
+# one containing images/, masks/, split.py, train.txt/val.txt/test.txt as
+# siblings. EDIT THIS to match your actual mount path -- run `!ls
+# /kaggle/input/` after attaching the dataset to find it; it may be
+# `/kaggle/input/landcoverai` or nested under `/kaggle/input/datasets/...`
+# depending on which Kaggle environment you're on (we've seen both).
+data_dir: /kaggle/input/landcoverai
+tiles_dir: data/landcover_tiles   # writable tiling cache -- NOT the read-only input
+tile_size: 128
+cache_dir: data/cache             # HSI+Edge preprocessing cache
+
+epochs: 30
+batch_size: 8   # 128x128x4 U-Net is heavier per-sample than 64x64 classification
+optimizer: adam
+lr: 1.0e-3
+
+early_stopping:
+  monitor: val_loss
+  patience: 5
+
+seeds: [0, 1, 2]   # brief calls for >=3 seeds minimum for this phase
+
+n_qubits: 6
+n_layers: 3
+entangle: true
+data_reuploading: false
+
+results_csv: results/results_segmentation.csv
+checkpoint_dir: results/checkpoints_segmentation

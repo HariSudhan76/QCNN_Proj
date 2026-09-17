@@ -1,0 +1,2 @@
+extends: segmentation_base.yaml
+arm: quantum

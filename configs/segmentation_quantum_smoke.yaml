@@ -1,0 +1,9 @@
+# Timing smoke test only: 1 seed, 1 epoch. Run this first to get a real
+# per-epoch wallclock number before committing to the full seeds: [0,1,2]
+# multi-epoch run in segmentation_quantum.yaml.
+extends: segmentation_quantum.yaml
+seeds: [0]
+epochs: 1
+early_stopping:
+  monitor: val_loss
+  patience: 1
