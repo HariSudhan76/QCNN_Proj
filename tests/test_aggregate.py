@@ -2,7 +2,7 @@ import csv
 
 import pytest
 
-from qrs.analysis.results import RESULT_COLUMNS, aggregate_results
+from qrs.analysis.results import RESULT_COLUMNS, SEGMENTATION_RESULT_COLUMNS, aggregate_results
 
 
 @pytest.fixture
@@ -62,3 +62,36 @@ def test_aggregate_mean_and_std_correct(multi_seed_csv):
     assert agg.loc["classical", "n_seeds"] == 3
     assert agg.loc["quantum", "n_quantum_params_mean"] == 72
     assert agg.loc["classical", "f1_weighted_std"] > 0
+
+
+def test_aggregate_works_on_segmentation_schema(tmp_path):
+    # aggregate_results must not hardcode the classification metric columns
+    # -- a segmentation CSV has miou/pixel_accuracy instead of
+    # f1_weighted/precision/recall, and shouldn't error or silently produce
+    # NaN-only columns for metrics that were never there to begin with.
+    csv_path = tmp_path / "results_segmentation.csv"
+    rows = [
+        {
+            "arm": "quantum",
+            "dataset": "landcover",
+            "seed": seed,
+            "n_trainable_params": 626721,
+            "n_quantum_params": 54,
+            "miou": miou,
+            "pixel_accuracy": miou + 0.1,
+            "train_wallclock_s": 1000.0,
+            "inference_wallclock_s": 50.0,
+            "epochs_run": 10,
+            "git_sha": "abc123",
+        }
+        for seed, miou in enumerate([0.50, 0.60])
+    ]
+    with open(csv_path, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=SEGMENTATION_RESULT_COLUMNS)
+        writer.writeheader()
+        writer.writerows(rows)
+
+    agg = aggregate_results(csv_path).set_index("arm")
+    assert agg.loc["quantum", "miou_mean"] == pytest.approx(0.55, abs=1e-9)
+    assert agg.loc["quantum", "n_seeds"] == 2
+    assert "f1_weighted_mean" not in agg.columns
