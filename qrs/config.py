@@ -17,12 +17,19 @@ class EarlyStoppingConfig:
 @dataclasses.dataclass
 class Config:
     arm: str = "classical"
+    task: str = "classification"  # "classification" | "segmentation"
 
     dataset: str = "eurosat"
     data_dir: str = "data/eurosat"
     cache_dir: str = "data/cache"
     image_size: int = 64
     split: tuple[float, float, float] = (0.70, 0.15, 0.15)
+
+    # Segmentation (LandCover.ai) only. data_dir is the (typically read-only,
+    # Kaggle-attached) raw dataset root; tiles_dir is where the writable
+    # tile_orthophotos() cache goes.
+    tiles_dir: str = "data/landcover_tiles"
+    tile_size: int = 128
 
     epochs: int = 30
     batch_size: int = 32
@@ -68,6 +75,9 @@ class Config:
             raise ValueError(
                 f"backbone_variant must be one of {valid_variants}, got {self.backbone_variant!r}"
             )
+        valid_tasks = {"classification", "segmentation"}
+        if self.task not in valid_tasks:
+            raise ValueError(f"task must be one of {valid_tasks}, got {self.task!r}")
 
 
 def load_config(path: str | Path) -> Config:
