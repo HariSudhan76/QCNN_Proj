@@ -15,11 +15,16 @@ dataset: landcover
 # depending on which Kaggle environment you're on (we've seen both).
 data_dir: /kaggle/input/landcoverai
 tiles_dir: data/landcover_tiles   # writable tiling cache -- NOT the read-only input
-tile_size: 128
+# 64 (not 128): the quantum-bottleneck smoke test at 128/n_qubits=6,n_layers=3
+# took 1890s (31.5 min) for ONE epoch -- over CLAUDE.md's 30-min smoke-test
+# ceiling. Quantum cost scales with (bottleneck spatial locations) x
+# (per-circuit cost); halving tile_size quarters the locations (4x4=16 ->
+# 2x2=4, still divisible by the encoder's 32x downsampling).
+tile_size: 64
 cache_dir: data/cache             # HSI+Edge preprocessing cache
 
 epochs: 30
-batch_size: 8   # 128x128x4 U-Net is heavier per-sample than 64x64 classification
+batch_size: 8   # 64x64x4 U-Net is still heavier per-sample than 64x64 classification
 optimizer: adam
 lr: 1.0e-3
 
@@ -29,8 +34,13 @@ early_stopping:
 
 seeds: [0, 1, 2]   # brief calls for >=3 seeds minimum for this phase
 
-n_qubits: 6
-n_layers: 3
+# 4,2 (not 6,3): the other half of cutting the smoke test's 1890s/epoch --
+# fewer qubits shrinks the state vector (2^4=16 vs 2^6=64) and fewer layers
+# cuts gate count, on top of tile_size's 4x fewer locations. Budget is now
+# 24 params (4*2*3) instead of 54, still a real point on the classification
+# sweep's own budget scale.
+n_qubits: 4
+n_layers: 2
 entangle: true
 data_reuploading: false
 
