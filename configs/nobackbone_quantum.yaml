@@ -1,0 +1,11 @@
+# "No-backbone control": zero learnable parameters upstream of the slot --
+# fixed average pooling straight from the raw 4-channel input to a 24-d
+# vector (qrs/models/backbone.py, variant="none"), no trained CNN anywhere.
+# Isolates whether the quantum layer separates from its matched control when
+# there's no trained feature extractor left to "do the real work" instead.
+extends: base.yaml
+arm: quantum
+backbone_variant: none
+n_qubits: 6
+n_layers: 3
+seeds: [0, 1, 2]

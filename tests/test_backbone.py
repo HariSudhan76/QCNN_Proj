@@ -31,6 +31,30 @@ def test_large_backbone_unchanged():
     assert _param_count(backbone) > 200_000
 
 
+def test_none_backbone_has_zero_learnable_parameters():
+    backbone = Backbone(in_channels=4, variant="none")
+    assert _param_count(backbone) == 0
+
+
+def test_none_backbone_output_width_matches_small():
+    # Same 24-d output width as "small", for direct comparability between
+    # "quantum/control fed a trained 24-d summary" and "...a fixed one".
+    backbone = Backbone(in_channels=4, variant="none")
+    assert backbone.feature_width == 24
+    out = backbone(torch.rand(2, 4, 64, 64))
+    assert out.shape == (2, 24)
+
+
+def test_none_backbone_output_is_deterministic_given_input():
+    # No learnable parameters and no randomness (e.g. dropout) -- same input
+    # must give bit-identical output regardless of training/eval mode or
+    # multiple calls, unlike "small"/"large" whose BatchNorm running stats
+    # can shift between calls in train mode.
+    backbone = Backbone(in_channels=4, variant="none")
+    x = torch.rand(2, 4, 64, 64)
+    assert torch.equal(backbone(x), backbone(x))
+
+
 def test_invalid_variant_rejected():
     import pytest
 

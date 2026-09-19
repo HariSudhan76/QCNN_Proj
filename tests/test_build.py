@@ -6,11 +6,11 @@ from qrs.models.build import build_model
 
 
 @pytest.mark.parametrize("arm", ["classical", "quantum", "control", "quantum_attn"])
-@pytest.mark.parametrize("backbone_variant", ["large", "small"])
-def test_all_arms_build_with_both_backbone_variants(arm, backbone_variant):
-    # 4 arms x 2 backbone variants = 8 combinations; each must build and do a
-    # forward pass with no shape error, whether the backbone emits 128-d
-    # (large) or 24-d (small) features.
+@pytest.mark.parametrize("backbone_variant", ["large", "small", "none"])
+def test_all_arms_build_with_all_backbone_variants(arm, backbone_variant):
+    # 4 arms x 3 backbone variants = 12 combinations; each must build and do
+    # a forward pass with no shape error, whether the backbone emits 128-d
+    # (large), 24-d (small, trained), or 24-d (none, fixed/untrained).
     config = Config(
         arm=arm,
         backbone_variant=backbone_variant,
@@ -20,6 +20,16 @@ def test_all_arms_build_with_both_backbone_variants(arm, backbone_variant):
     model = build_model(config)
     out = model(torch.rand(2, 4, 64, 64))
     assert out.shape == (2, 10)
+
+
+def test_no_backbone_variant_isolates_slot_as_dominant_param_fraction():
+    # The whole point of "none": with zero backbone params, the
+    # quantum/control slot should be a large fraction of the total model,
+    # not diluted by a trained feature extractor.
+    config = Config(arm="quantum", backbone_variant="none", n_qubits=6, n_layers=3)
+    model = build_model(config)
+    total = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    assert model.n_quantum_params / total > 0.15  # ~20% in practice (54/274)
 
 
 def test_classical_arm_forward_shape():

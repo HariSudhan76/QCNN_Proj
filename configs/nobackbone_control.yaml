@@ -1,0 +1,6 @@
+extends: base.yaml
+arm: control
+backbone_variant: none
+n_qubits: 6
+n_layers: 3
+seeds: [0, 1, 2]

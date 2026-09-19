@@ -1,0 +1,8 @@
+# Reference point: a bare linear probe (Linear(24->10)) on the same fixed,
+# non-learned 24-d pooled summary the quantum/control slot receives -- no
+# slot at all. Useful context for how much a trainable slot (quantum or
+# control) adds over nothing.
+extends: base.yaml
+arm: classical
+backbone_variant: none
+seeds: [0, 1, 2]
