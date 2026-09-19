@@ -120,6 +120,43 @@ def tile_paths(tiles_dir: str | Path, tile_id: str) -> tuple[Path, Path]:
     return tiles_dir / f"{tile_id}.jpg", tiles_dir / f"{tile_id}_m.png"
 
 
+def _filter_to_existing_tiles(split: Split, tiles_dir: str | Path) -> Split:
+    """Drop any tile id the official split lists but this environment's
+    tiling didn't produce. Observed in practice: a handful of ids from the
+    published train.txt are absent even when tiling matches split.py
+    bit-for-bit (same OpenCV calls, same grid math, verified against a
+    hand-computed synthetic case) -- most likely a GeoTIFF decoder/library
+    version difference from whatever environment generated the official
+    split, not a bug in our tiling. Filtering (not crashing) trades a small,
+    logged amount of missing data for a pipeline that actually runs; the
+    alternative is chasing bit-for-bit reproduction of a third-party GIS
+    toolchain we don't control."""
+
+    def _filter(tile_ids: list[str]) -> tuple[list[str], list[str]]:
+        kept, dropped = [], []
+        for tile_id in tile_ids:
+            img_path, mask_path = tile_paths(tiles_dir, tile_id)
+            (kept if img_path.exists() and mask_path.exists() else dropped).append(tile_id)
+        return kept, dropped
+
+    train, train_dropped = _filter(split.train)
+    val, val_dropped = _filter(split.val)
+    test, test_dropped = _filter(split.test)
+
+    all_dropped = train_dropped + val_dropped + test_dropped
+    if all_dropped:
+        sample = ", ".join(all_dropped[:5])
+        more = f" (+{len(all_dropped) - 5} more)" if len(all_dropped) > 5 else ""
+        print(
+            f"WARNING: {len(all_dropped)} tile(s) listed in the official split "
+            f"were not produced by tiling in this environment -- excluded: "
+            f"{sample}{more}",
+            flush=True,
+        )
+
+    return Split(train=train, val=val, test=test)
+
+
 def prepare_landcover(
     raw_dir: str | Path, tiles_dir: str | Path, target_size: int = 512
 ) -> tuple[Path, Split]:
@@ -131,4 +168,5 @@ def prepare_landcover(
         raw_dir / "images", raw_dir / "masks", tiles_dir, target_size=target_size
     )
     split = load_official_split(raw_dir)
+    split = _filter_to_existing_tiles(split, tiles_dir)
     return tiles_dir, split

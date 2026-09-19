@@ -133,3 +133,24 @@ def test_prepare_landcover_wires_tiling_and_split_together(tmp_path):
     assert (tiles_dir / "t_0.jpg").exists()
     assert (tiles_dir / "t_0_m.png").exists()
     assert split.train == ["t_0"]
+
+
+def test_prepare_landcover_filters_split_entries_missing_from_tiling(tmp_path, capsys):
+    # Real bug encountered on Kaggle: the published train.txt lists a tile
+    # id that tiling (even matching split.py bit-for-bit) never produces for
+    # some orthophotos -- prepare_landcover must drop it and warn, not crash.
+    raw_dir = tmp_path / "raw"
+    (raw_dir / "images").mkdir(parents=True)
+    (raw_dir / "masks").mkdir(parents=True)
+    _make_orthophoto(raw_dir / "images" / "t.tif", width=8, height=8, mode="RGB", fill=1)
+    _make_orthophoto(raw_dir / "masks" / "t.tif", width=8, height=8, mode="L", fill=1)
+    # t_0 is real (8x8 at target_size=8 produces exactly one tile, k=0);
+    # t_99 is not -- simulates a split entry with no matching tiled output.
+    (raw_dir / "train.txt").write_text("t_0\nt_99\n")
+    (raw_dir / "val.txt").write_text("")
+    (raw_dir / "test.txt").write_text("")
+
+    tiles_dir, split = prepare_landcover(raw_dir, tmp_path / "tiles", target_size=8)
+
+    assert split.train == ["t_0"]  # t_99 silently dropped, not crashed on
+    assert "t_99" in capsys.readouterr().out  # but the drop is logged, not silent
