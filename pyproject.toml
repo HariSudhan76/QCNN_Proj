@@ -18,6 +18,7 @@ dependencies = [
     "pillow",
     "truststore",
     "psutil",
+    "opencv-python-headless",
 ]
 
 [project.optional-dependencies]

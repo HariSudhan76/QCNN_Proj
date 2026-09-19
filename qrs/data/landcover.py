@@ -6,20 +6,14 @@ split.py, and train.txt/val.txt/test.txt listing official tile membership as
 "{orthophoto_name}_{k}" (no extension) -- verified directly against the
 dataset's actual split.py source and a train.txt sample, not assumed.
 
-tile_orthophotos() below is a faithful reimplementation of that split.py:
-same TARGET_SIZE grid, same non-overlapping stride, and critically the same
-"k increments every grid position, but only full-size tiles get written"
-behaviour -- this produces the exact gaps (..., _1, _10, _100, _102, ...)
-seen in the official train.txt, which is why tile numbering must match
-bit-for-bit rather than just "tile similarly". Reimplemented with Pillow
-(already a dependency) instead of the original's OpenCV to avoid adding
-opencv-python -- see the docstring notes below on the one behavioural
-difference this requires accounting for (mask channel handling).
-
-Known risk, not verified here (no local access to the ~1.55GB dataset):
-PIL's built-in libtiff binding usually opens standard GeoTIFFs fine, but some
-compression/tiling schemes need `tifffile` or `rasterio` instead. If
-Image.open() fails on the real orthophotos, that's the first thing to try.
+tile_orthophotos() below uses OpenCV (matching split.py exactly) rather than
+Pillow. An earlier Pillow-based reimplementation matched split.py's *logic*
+exactly (verified against a hand-computed synthetic case) but diverged on
+real orthophotos: at least one real GeoTIFF produced a different tile count
+under Pillow than under OpenCV, most likely because these are GIS-authored,
+possibly tiled/pyramidal TIFFs that the two libraries' TIFF decoders don't
+necessarily agree on pixel-for-pixel. Using the same library the authors
+used sidesteps that risk entirely rather than hoping two decoders agree.
 """
 
 from __future__ import annotations
@@ -27,7 +21,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from PIL import Image
+import cv2
 
 # 0 = unlabeled/background, matching the authors' pixel-value convention.
 CLASSES = ["background", "building", "woodland", "water", "road"]
@@ -51,14 +45,17 @@ def tile_orthophotos(
     "{name}_{k}.jpg" for images, "{name}_{k}_m.png" for masks. Idempotent --
     returns immediately if output_dir already has content.
 
-    The original script reads masks via `cv2.imread(path)` with no flag,
-    which forces OpenCV to decode even a single-channel mask as 3-channel
-    BGR (replicating the class-index value across all 3 channels) -- an
-    incidental side effect of their default flag, not meaningful data. We
-    read masks as single-channel directly via Pillow and write clean
-    single-channel PNGs: identical class-index values, smaller files, and it
-    doesn't affect matching against train.txt/val.txt/test.txt, which only
-    depends on the "{name}_{k}" naming/indexing established below.
+    Uses cv2.imread/imwrite exactly like the original script, including its
+    numpy-slice-based "only write a full tile" check, so tile counts and
+    boundaries match bit-for-bit. One deliberate difference: the original
+    reads masks via `cv2.imread(path)` with no flag, which forces OpenCV to
+    decode even a single-channel mask as 3-channel BGR (replicating the
+    class-index value across all 3 channels) -- an incidental side effect of
+    their default flag, not meaningful data. We read masks with
+    `cv2.IMREAD_GRAYSCALE` and write clean single-channel PNGs instead:
+    identical class-index values, smaller files, and it doesn't affect
+    matching against train.txt/val.txt/test.txt, which only depends on the
+    "{name}_{k}" naming/indexing established below.
     """
     images_dir = Path(images_dir)
     masks_dir = Path(masks_dir)
@@ -75,28 +72,28 @@ def tile_orthophotos(
     for i, (img_path, mask_path) in enumerate(zip(img_paths, mask_paths)):
         img_name = img_path.stem
         mask_name = mask_path.stem
-        img = Image.open(img_path).convert("RGB")
-        mask = Image.open(mask_path).convert("L")
+        img = cv2.imread(str(img_path))
+        mask = cv2.imread(str(mask_path), cv2.IMREAD_GRAYSCALE)
 
-        if img_name != mask_name or img.size != mask.size:
+        if img is None:
+            raise ValueError(f"cv2 failed to read image: {img_path}")
+        if mask is None:
+            raise ValueError(f"cv2 failed to read mask: {mask_path}")
+        if img_name != mask_name or img.shape[:2] != mask.shape[:2]:
             raise ValueError(
-                f"image/mask mismatch: {img_path.name} ({img.size}) vs "
-                f"{mask_path.name} ({mask.size})"
+                f"image/mask mismatch: {img_path.name} ({img.shape[:2]}) vs "
+                f"{mask_path.name} ({mask.shape[:2]})"
             )
 
-        width, height = img.size  # PIL size is (W, H)
         k = 0
-        for y in range(0, height, target_size):
-            for x in range(0, width, target_size):
-                # PIL's crop() always returns a box of the requested size,
-                # padding if it runs past the edge -- unlike the original's
-                # numpy slicing, which just shrinks. Check bounds explicitly
-                # instead of the cropped result's size, so "only write a
-                # full tile" means the same thing here as it did there.
-                if x + target_size <= width and y + target_size <= height:
-                    box = (x, y, x + target_size, y + target_size)
-                    img.crop(box).save(output_dir / f"{img_name}_{k}.jpg")
-                    mask.crop(box).save(output_dir / f"{mask_name}_{k}_m.png")
+        for y in range(0, img.shape[0], target_size):
+            for x in range(0, img.shape[1], target_size):
+                img_tile = img[y : y + target_size, x : x + target_size]
+                mask_tile = mask[y : y + target_size, x : x + target_size]
+
+                if img_tile.shape[0] == target_size and img_tile.shape[1] == target_size:
+                    cv2.imwrite(str(output_dir / f"{img_name}_{k}.jpg"), img_tile)
+                    cv2.imwrite(str(output_dir / f"{mask_name}_{k}_m.png"), mask_tile)
                 k += 1
 
         print(f"  tiled {img_name} ({i + 1}/{len(img_paths)})", flush=True)
