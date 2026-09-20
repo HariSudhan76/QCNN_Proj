@@ -1,0 +1,5 @@
+# Same as grid4x4_control.yaml but 50 epochs: val loss was still falling at
+# epoch 30. Both arms must use identical epochs, so control gets 50 too.
+extends: grid4x4_control.yaml
+epochs: 50
+seeds: [0, 1, 2]
