@@ -1,0 +1,4 @@
+# control_scaled on the 4x4 grid; compare with grid4x4_control/quantum.
+extends: grid4x4_control.yaml
+arm: control_scaled
+seeds: [0, 1, 2]

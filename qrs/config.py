@@ -74,7 +74,7 @@ class Config:
             raise ValueError(f"n_qubits must be >= 2, got {self.n_qubits}")
         if self.n_layers < 1:
             raise ValueError(f"n_layers must be >= 1, got {self.n_layers}")
-        valid_arms = {"classical", "quantum", "control", "quantum_attn", "fused"}
+        valid_arms = {"classical", "quantum", "control", "control_scaled", "quantum_attn", "fused"}
         if self.arm not in valid_arms:
             raise ValueError(f"arm must be one of {valid_arms}, got {self.arm!r}")
         valid_variants = {"large", "small", "none"}

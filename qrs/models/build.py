@@ -16,6 +16,15 @@ from qrs.models.heads import ClassifierHead
 from qrs.models.quantum_layer import QuantumLayer, quantum_param_count
 
 
+class SquashToAngleRange(nn.Module):
+    """sigmoid * pi -- the exact input squashing QuantumLayer applies before
+    encoding. Parameter-free; lets the `control_scaled` arm see the same [0, pi]
+    input range as the quantum circuit."""
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return torch.sigmoid(x) * torch.pi
+
+
 class ArmModel(nn.Module):
     def __init__(
         self,
@@ -75,11 +84,17 @@ def build_model(config: Config) -> nn.Module:
         head = ClassifierHead(config.n_qubits, n_classes)
         return ArmModel(backbone, middle, head, attention)
 
-    if effective_arm == "control":
+    if effective_arm in ("control", "control_scaled"):
         compression = nn.Linear(feat_width, config.n_qubits)
         target_params = quantum_param_count(config.n_qubits, config.n_layers)
         control = build_parameter_matched_control(config.n_qubits, config.n_qubits, target_params)
-        middle = nn.Sequential(compression, control)
+        if effective_arm == "control_scaled":
+            # Same as control, but the slot sees the quantum layer's [0, pi]
+            # input range. Separates "quantum structure helps" from "bounded
+            # input scaling helps". Zero extra parameters.
+            middle = nn.Sequential(compression, SquashToAngleRange(), control)
+        else:
+            middle = nn.Sequential(compression, control)
         # No quantum parameters in the control arm by construction.
         middle.n_quantum_params = 0
         head = ClassifierHead(config.n_qubits, n_classes)

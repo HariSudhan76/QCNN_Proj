@@ -108,3 +108,24 @@ def test_grid4x4_configs_build_with_64d_input():
         assert model.backbone.feature_width == 64
     q = build_model(load_config("configs/phase2/grid4x4_quantum.yaml"))
     assert q.n_quantum_params == 54
+
+
+def test_control_scaled_matches_control_params_and_squashes_input():
+    import torch
+
+    from qrs.config import load_config
+    from qrs.models.build import SquashToAngleRange, build_model
+
+    ctl = build_model(load_config("configs/nobackbone_control.yaml"))
+    scaled = build_model(load_config("configs/nobackbone_control_scaled.yaml"))
+    n = lambda m: sum(p.numel() for p in m.parameters() if p.requires_grad)  # noqa: E731
+    assert n(ctl) == n(scaled) == 274
+    assert scaled.n_quantum_params == 0
+    assert any(isinstance(m, SquashToAngleRange) for m in scaled.middle)
+
+    out = SquashToAngleRange()(torch.tensor([-100.0, 0.0, 100.0]))
+    assert out.min() >= 0 and out.max() <= torch.pi
+    assert torch.isclose(out[1], torch.tensor(torch.pi / 2))
+
+    grid = build_model(load_config("configs/phase2/grid4x4_control_scaled.yaml"))
+    assert n(grid) == 514

@@ -1,0 +1,9 @@
+# Fairness check for the quantum-vs-control gap: control whose slot input is
+# squashed to [0, pi] (sigmoid*pi) exactly like the quantum circuit's input.
+# Otherwise identical to nobackbone_control.yaml (2x3 grid, 6q x 3L = 54).
+extends: base.yaml
+arm: control_scaled
+backbone_variant: none
+n_qubits: 6
+n_layers: 3
+seeds: [0, 1, 2, 3, 4]
