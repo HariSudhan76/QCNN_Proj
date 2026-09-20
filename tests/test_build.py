@@ -95,3 +95,16 @@ def test_quantum_attn_arm_forces_attention_on():
     assert out.shape == (2, 10)
     assert model.n_quantum_params == 2 * 4 * 3
     assert model.attention.last_weights is not None
+
+
+def test_grid4x4_configs_build_with_64d_input():
+    from qrs.config import load_config
+    from qrs.models.build import build_model
+
+    for arm in ("quantum", "control", "classical"):
+        cfg = load_config(f"configs/phase2/grid4x4_{arm}.yaml")
+        assert cfg.none_pool_grid == (4, 4)
+        model = build_model(cfg)
+        assert model.backbone.feature_width == 64
+    q = build_model(load_config("configs/phase2/grid4x4_quantum.yaml"))
+    assert q.n_quantum_params == 54

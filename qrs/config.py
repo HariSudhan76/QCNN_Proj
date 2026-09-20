@@ -42,6 +42,9 @@ class Config:
 
     backbone_variant: str = "large"
     feature_width: int = 128
+    # Only used by backbone_variant "none": AdaptiveAvgPool2d grid, giving
+    # 4 channels x grid_h x grid_w features. Default keeps the original 24-d.
+    none_pool_grid: tuple[int, int] = (2, 3)
 
     n_qubits: int = 8
     n_layers: int = 3
@@ -56,6 +59,10 @@ class Config:
     def __post_init__(self) -> None:
         if isinstance(self.split, list):
             self.split = tuple(self.split)
+        if isinstance(self.none_pool_grid, list):
+            self.none_pool_grid = tuple(self.none_pool_grid)
+        if len(self.none_pool_grid) != 2 or min(self.none_pool_grid) < 1:
+            raise ValueError(f"none_pool_grid must be two positive ints, got {self.none_pool_grid}")
         if isinstance(self.seeds, list):
             self.seeds = tuple(self.seeds)
         if isinstance(self.early_stopping, dict):

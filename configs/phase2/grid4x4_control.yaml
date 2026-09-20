@@ -1,0 +1,7 @@
+# Finer fixed pooling for the no-backbone design: 4x4 grid -> 4 ch x 16 = 64-d
+# input (was 2x3 = 24-d). Everything else identical to nobackbone_control.yaml.
+# Gate step: control/classical get 3 seeds first; quantum starts at seed 0
+# and is extended only if the finer grid actually lifts control.
+extends: ../nobackbone_control.yaml
+none_pool_grid: [4, 4]
+seeds: [0, 1, 2]

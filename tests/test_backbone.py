@@ -60,3 +60,14 @@ def test_invalid_variant_rejected():
 
     with pytest.raises(ValueError):
         Backbone(variant="medium")
+
+
+def test_none_backbone_pool_grid_sets_width():
+    backbone = Backbone(in_channels=4, variant="none", pool_grid=(4, 4))
+    assert backbone.feature_width == 64
+    assert backbone(torch.rand(2, 4, 64, 64)).shape == (2, 64)
+    assert _param_count(backbone) == 0
+
+
+def test_none_backbone_default_grid_unchanged():
+    assert Backbone(in_channels=4, variant="none").feature_width == 24

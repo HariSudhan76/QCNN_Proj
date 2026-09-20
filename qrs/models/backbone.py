@@ -45,6 +45,7 @@ class Backbone(nn.Module):
         in_channels: int = 4,
         feature_width: int = 128,
         variant: str = "large",
+        pool_grid: tuple[int, int] = _NONE_VARIANT_POOL_GRID,
     ) -> None:
         super().__init__()
         if variant not in BACKBONE_VARIANTS:
@@ -65,8 +66,8 @@ class Backbone(nn.Module):
             self.block3 = _conv_block(16, 24)
             self.feature_width = 24
         else:  # "none": no blocks, no learnable parameters at all
-            self.fixed_pool = nn.AdaptiveAvgPool2d(_NONE_VARIANT_POOL_GRID)
-            self.feature_width = in_channels * _NONE_VARIANT_POOL_GRID[0] * _NONE_VARIANT_POOL_GRID[1]
+            self.fixed_pool = nn.AdaptiveAvgPool2d(tuple(pool_grid))
+            self.feature_width = in_channels * pool_grid[0] * pool_grid[1]
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         if self.variant == "large":
@@ -83,5 +84,5 @@ class Backbone(nn.Module):
             x = self.gap(x)  # (B, feature_width, 1, 1)
             return x.flatten(1)
         else:  # "none"
-            x = self.fixed_pool(x)  # (B, in_channels, 2, 3), no learnable params
+            x = self.fixed_pool(x)  # (B, in_channels, *pool_grid), no learnable params
             return x.flatten(1)  # (B, feature_width)
