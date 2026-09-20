@@ -105,3 +105,22 @@ def test_data_reuploading_adds_encoding_gates(n_qubits, n_layers, entangle):
     assert on["RY"] == n_qubits * n_layers
     assert on["Rot"] == off["Rot"]
     assert on.get("CNOT", 0) == off.get("CNOT", 0)
+
+
+def test_smoke_q4l8_configs_match_at_96_params(capsys):
+    from qrs.config import load_config
+
+    quantum_cfg = load_config("configs/phase2/smoke_q4l8_quantum.yaml")
+    control_cfg = load_config("configs/phase2/smoke_q4l8_control.yaml")
+    assert (quantum_cfg.n_qubits, quantum_cfg.n_layers) == (4, 8)
+    assert quantum_cfg.backbone_variant == control_cfg.backbone_variant == "none"
+    assert quantum_cfg.seeds == control_cfg.seeds == (0,)
+    assert quantum_cfg.epochs == control_cfg.epochs == 30
+    assert not quantum_cfg.data_reuploading
+
+    quantum = build_model(quantum_cfg)
+    assert quantum.n_quantum_params == 96
+
+    control = build_model(control_cfg)  # asserts within 5% internally
+    assert "target_params=96 actual_params=96" in capsys.readouterr().out
+    assert control.n_quantum_params == 0

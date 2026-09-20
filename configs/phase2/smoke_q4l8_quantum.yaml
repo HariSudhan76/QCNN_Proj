@@ -1,0 +1,10 @@
+# 4 qubits x 8 layers = 96 quantum params, no-backbone design (fixed pooling
+# to 24-d, backbone_variant: none, same as nobackbone_quantum.yaml).
+extends: ../base.yaml
+arm: quantum
+backbone_variant: none
+n_qubits: 4
+n_layers: 8
+data_reuploading: false
+epochs: 30
+seeds: [0]
