@@ -124,3 +124,21 @@ def test_smoke_q4l8_configs_match_at_96_params(capsys):
     control = build_model(control_cfg)  # asserts within 5% internally
     assert "target_params=96 actual_params=96" in capsys.readouterr().out
     assert control.n_quantum_params == 0
+
+
+def test_smoke_q6l6_configs_match_at_108_params(capsys):
+    from qrs.config import load_config
+
+    quantum_cfg = load_config("configs/phase2/smoke_q6l6_quantum.yaml")
+    control_cfg = load_config("configs/phase2/smoke_q6l6_control.yaml")
+    assert (quantum_cfg.n_qubits, quantum_cfg.n_layers) == (6, 6)
+    assert quantum_cfg.backbone_variant == control_cfg.backbone_variant == "none"
+    assert quantum_cfg.seeds == control_cfg.seeds == (0,)
+    assert quantum_cfg.epochs == control_cfg.epochs == 10
+    assert not quantum_cfg.data_reuploading
+
+    assert build_model(quantum_cfg).n_quantum_params == 108
+
+    control = build_model(control_cfg)
+    assert "target_params=108 actual_params=108" in capsys.readouterr().out
+    assert control.n_quantum_params == 0

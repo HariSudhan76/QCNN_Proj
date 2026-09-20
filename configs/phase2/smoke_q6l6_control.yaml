@@ -1,0 +1,10 @@
+# 6 qubits x 6 layers = 108-param slot, no-backbone design (same as
+# nobackbone_control.yaml). 10 epochs: a speed/trainability check, not a result.
+extends: ../base.yaml
+arm: control
+backbone_variant: none
+n_qubits: 6
+n_layers: 6
+data_reuploading: false
+epochs: 10
+seeds: [0]
