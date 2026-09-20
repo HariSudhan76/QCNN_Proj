@@ -1,0 +1,4 @@
+# Resume config: grid4x4_quantum.yaml ran seed 0 only. Runs the remaining
+# seeds so results.csv gets no duplicate seed-0 row.
+extends: grid4x4_quantum.yaml
+seeds: [1, 2]
