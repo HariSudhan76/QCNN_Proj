@@ -1,3 +1,6 @@
+from collections import Counter
+
+import pennylane as qml
 import pytest
 import torch
 
@@ -67,3 +70,38 @@ def test_entangle_false_has_no_cnots_but_same_param_count():
     entangled = QuantumLayer(n_qubits, n_layers, entangle=True)
     unentangled = QuantumLayer(n_qubits, n_layers, entangle=False)
     assert entangled.n_quantum_params == unentangled.n_quantum_params
+
+
+def _decomposed_gate_counts(layer: QuantumLayer) -> dict[str, int]:
+    # Decompose templates (AngleEmbedding, StronglyEntanglingLayers) to
+    # primitive gates so the count reflects what actually gets simulated.
+    x = torch.rand(layer.n_qubits)
+    tape = qml.tape.make_qscript(layer._circuit)(x, layer.qlayer.weights)
+    (decomposed,), _ = qml.transforms.decompose(tape, gate_set={"RY", "Rot", "CNOT", "RZ"})
+    return dict(Counter(op.name for op in decomposed.operations))
+
+
+@pytest.mark.parametrize("entangle", [True, False])
+@pytest.mark.parametrize("n_qubits, n_layers", [(4, 2), (6, 3)])
+def test_data_reuploading_keeps_param_count(n_qubits, n_layers, entangle):
+    off = QuantumLayer(n_qubits, n_layers, entangle=entangle, data_reuploading=False)
+    on = QuantumLayer(n_qubits, n_layers, entangle=entangle, data_reuploading=True)
+    assert off.n_quantum_params == on.n_quantum_params == n_qubits * n_layers * 3
+
+
+@pytest.mark.parametrize("entangle", [True, False])
+@pytest.mark.parametrize("n_qubits, n_layers", [(4, 2), (6, 3)])
+def test_data_reuploading_adds_encoding_gates(n_qubits, n_layers, entangle):
+    off = _decomposed_gate_counts(
+        QuantumLayer(n_qubits, n_layers, entangle=entangle, data_reuploading=False)
+    )
+    on = _decomposed_gate_counts(
+        QuantumLayer(n_qubits, n_layers, entangle=entangle, data_reuploading=True)
+    )
+    assert sum(on.values()) > sum(off.values())
+    # Encoding is one RY per qubit per block: once without re-uploading,
+    # once per variational layer with it. Variational gates are unchanged.
+    assert off["RY"] == n_qubits
+    assert on["RY"] == n_qubits * n_layers
+    assert on["Rot"] == off["Rot"]
+    assert on.get("CNOT", 0) == off.get("CNOT", 0)
