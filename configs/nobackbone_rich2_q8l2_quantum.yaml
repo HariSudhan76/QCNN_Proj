@@ -1,0 +1,8 @@
+# Same rich2 256-d input as nobackbone_rich2_quantum.yaml. 8 qubits x 2 layers =
+# 48 params -- same bottleneck width as q8l1 (24 params) but twice the
+# circuit depth, testing whether more layers add anything once the
+# bottleneck is already at CLAUDE.md's qubit cap (8, "never" exceeded).
+extends: nobackbone_rich2_quantum.yaml
+n_qubits: 8
+n_layers: 2
+seeds: [0, 1, 2]
