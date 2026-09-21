@@ -1,0 +1,8 @@
+# EXCEPTION: 10 qubits exceeds CLAUDE.md's stated 6-8 qubit cap (simulation
+# cost is exponential in qubits). Run deliberately at the user's request;
+# keep separate from the in-bounds comparisons and note this in any write-up.
+# Same rich2 256-d input as nobackbone_rich2_control.yaml; 10 qubits x 2 layer(s).
+extends: nobackbone_rich2_control.yaml
+n_qubits: 10
+n_layers: 2
+seeds: [0, 1, 2]

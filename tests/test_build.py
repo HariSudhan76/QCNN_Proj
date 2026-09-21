@@ -248,3 +248,21 @@ def test_nobackbone_rich2_q8l2_configs_match_at_48_params(capsys):
 
     n = lambda m: sum(p.numel() for p in m.parameters() if p.requires_grad)  # noqa: E731
     assert n(quantum) == n(control) == 256 * 8 + 8 + 48 + 8 * 10 + 10
+
+
+def test_nobackbone_rich2_q10_configs_match_params(capsys):
+    from qrs.config import load_config
+
+    for layers, params in ((1, 30), (2, 60)):
+        quantum_cfg = load_config(f"configs/nobackbone_rich2_q10l{layers}_quantum.yaml")
+        control_cfg = load_config(f"configs/nobackbone_rich2_q10l{layers}_control.yaml")
+        for cfg in (quantum_cfg, control_cfg):
+            assert (cfg.n_qubits, cfg.n_layers) == (10, layers)
+            assert cfg.epochs == 30
+            assert cfg.seeds == (0, 1, 2)
+
+        assert build_model(quantum_cfg).n_quantum_params == params
+        capsys.readouterr()
+        control = build_model(control_cfg)
+        assert f"target_params={params} actual_params={params}" in capsys.readouterr().out
+        assert control.n_quantum_params == 0
