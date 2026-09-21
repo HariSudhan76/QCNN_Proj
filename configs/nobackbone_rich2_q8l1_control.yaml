@@ -1,0 +1,11 @@
+# Same rich2 256-d input as nobackbone_rich2_control.yaml, but wide-bottleneck /
+# shallow-circuit: 8 qubits x 1 layer = 24 params (vs 6q x 3L = 54, or
+# 2q x 2L = 12). Isolates bottleneck width from parameter count: this has
+# fewer params than the 54-param run but a WIDER bottleneck than the
+# 12-param run (8 vs 2). Compares directly against the earlier 24-param
+# point (4 qubits x 2 layers, narrower bottleneck, same param count) run
+# on the small-backbone design.
+extends: nobackbone_rich2_control.yaml
+n_qubits: 8
+n_layers: 1
+seeds: [0, 1, 2]
