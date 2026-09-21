@@ -1,0 +1,10 @@
+# Same rich2 256-d input (mean+std pooling + Gabor bank) as
+# nobackbone_rich2_quantum.yaml, but the slot shrinks from 6 qubits x 3 layers
+# (54 params) to 2 qubits x 2 layers (12 params) -- tests whether quantum's
+# edge reappears when the SLOT is the bottleneck, now that the earlier
+# result showed the gap collapse once the INPUT stopped being the
+# bottleneck. Compression resizes to 256->2 accordingly.
+extends: nobackbone_rich2_quantum.yaml
+n_qubits: 2
+n_layers: 2
+seeds: [0, 1, 2]

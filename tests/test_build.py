@@ -182,3 +182,25 @@ def test_nobackbone_rich2_configs_match_at_54_params(capsys):
     assert n(quantum) == 256 * 6 + 6 + 54 + 6 * 10 + 10  # compression + slot + head
     assert n(control) == n(quantum)
     assert n(classical) == 256 * 10 + 10  # Identity + head only, no slot
+
+
+def test_nobackbone_rich2_p12_configs_match_at_12_params(capsys):
+    from qrs.config import load_config
+
+    quantum_cfg = load_config("configs/nobackbone_rich2_p12_quantum.yaml")
+    control_cfg = load_config("configs/nobackbone_rich2_p12_control.yaml")
+    for cfg in (quantum_cfg, control_cfg):
+        assert cfg.backbone_variant == "rich_features"
+        assert (cfg.n_qubits, cfg.n_layers) == (2, 2)
+        assert cfg.epochs == 30
+        assert cfg.seeds == (0, 1, 2)
+
+    quantum = build_model(quantum_cfg)
+    assert quantum.n_quantum_params == 12
+
+    control = build_model(control_cfg)
+    assert "target_params=12 actual_params=12" in capsys.readouterr().out
+    assert control.n_quantum_params == 0
+
+    n = lambda m: sum(p.numel() for p in m.parameters() if p.requires_grad)  # noqa: E731
+    assert n(quantum) == n(control) == 256 * 2 + 2 + 12 + 2 * 10 + 10
