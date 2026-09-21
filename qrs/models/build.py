@@ -70,6 +70,7 @@ def build_model(config: Config) -> nn.Module:
             feature_width=config.feature_width,
             variant=config.backbone_variant,
             pool_grid=config.none_pool_grid,
+            rich_feature_dim=config.rich_feature_dim,
         )
     # Read the backbone's real output width rather than assuming config.feature_width
     # -- the "small" variant is a fixed 8/16/24 architecture whose output is 24,

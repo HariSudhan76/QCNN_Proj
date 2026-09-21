@@ -92,3 +92,77 @@ def test_preprocess_tile_rgb_shape_and_normalisation():
     # (0.5 - mean) / std, per ImageNet channel stats -- not just passed through.
     assert not np.allclose(out[0], 0.5)
     assert np.isfinite(out).all()
+
+
+def test_pooled_mean_std_dimension_and_values():
+    from qrs.data.preprocessing import pooled_mean_std
+
+    tensor = np.zeros((4, 64, 64), dtype=np.float32)
+    tensor[:, :, :32] = 1.0  # left half 1, right half 0 -> known per-cell mean/std
+    out = pooled_mean_std(tensor, grid=(4, 4))
+    assert out.shape == (128,)
+    # First two grid columns (fully in the "1" half) have mean 1, std 0.
+    mean = out[:64].reshape(4, 4, 4)
+    std = out[64:].reshape(4, 4, 4)
+    assert np.allclose(mean[:, :, :2], 1.0)
+    assert np.allclose(mean[:, :, 2:], 0.0)
+    assert np.allclose(std, 0.0)  # every cell is uniform (all-1 or all-0)
+
+
+def test_pooled_mean_std_rejects_non_dividing_grid():
+    from qrs.data.preprocessing import pooled_mean_std
+
+    with pytest.raises(ValueError, match="evenly divide"):
+        pooled_mean_std(np.zeros((4, 64, 64)), grid=(3, 3))
+
+
+def test_gabor_features_dimension_and_finite():
+    from qrs.data.preprocessing import gabor_features
+
+    rng = np.random.default_rng(3)
+    tensor = rng.random((4, 64, 64)).astype(np.float32)
+    out = gabor_features(tensor, pool_grid=(2, 2))
+    assert out.shape == (128,)  # 4 orientations x 2 freqs x 4 channels x 4 cells
+    assert np.isfinite(out).all()
+
+
+def test_gabor_features_uniform_on_constant_image():
+    from qrs.data.preprocessing import gabor_features
+
+    tensor = np.full((4, 64, 64), 0.5, dtype=np.float32)
+    out = gabor_features(tensor, pool_grid=(2, 2))
+    # A finite-window Gabor kernel has some nonzero DC response even to a
+    # constant image, but that response must be spatially uniform (same in
+    # every one of the 4 pooled cells for a given orientation/freq/channel,
+    # since there's no edge/texture anywhere for the filter to react to).
+    per_filter_channel = out.reshape(4, 2, 4, 4)  # (orient, freq, channel, cell)
+    for cell_group in per_filter_channel.reshape(-1, 4):
+        assert np.allclose(cell_group, cell_group[0], atol=1e-5)
+
+
+def test_preprocess_tile_rich2_shape_and_matches_components():
+    from qrs.data.preprocessing import gabor_features, pooled_mean_std, preprocess_tile_rich2
+
+    rng = np.random.default_rng(4)
+    rgb = rng.random((64, 64, 3))
+    out = preprocess_tile_rich2(rgb)
+    assert out.shape == (256,)
+    assert out.dtype == np.float32
+    assert np.isfinite(out).all()
+
+    tensor = preprocess_tile(rgb)
+    expected = np.concatenate(
+        [pooled_mean_std(tensor, grid=(4, 4)), gabor_features(tensor, pool_grid=(2, 2))]
+    )
+    assert np.array_equal(out, expected)
+
+
+def test_preprocess_tile_rich2_cached_matches_uncached(tmp_path):
+    from qrs.data.preprocessing import preprocess_tile_rich2, preprocess_tile_rich2_cached
+
+    rng = np.random.default_rng(5)
+    rgb = rng.random((64, 64, 3))
+    cached_first = preprocess_tile_rich2_cached(rgb, tmp_path)
+    cached_second = preprocess_tile_rich2_cached(rgb, tmp_path)  # hits the cache
+    assert np.array_equal(cached_first, preprocess_tile_rich2(rgb))
+    assert np.array_equal(cached_first, cached_second)

@@ -45,6 +45,9 @@ class Config:
     # Only used by backbone_variant "none": AdaptiveAvgPool2d grid, giving
     # 4 channels x grid_h x grid_w features. Default keeps the original 24-d.
     none_pool_grid: tuple[int, int] = (2, 3)
+    # Only used by backbone_variant "rich_features": dimensionality of the
+    # precomputed rich2 feature vector (see qrs.data.preprocessing).
+    rich_feature_dim: int = 256
 
     n_qubits: int = 8
     n_layers: int = 3
@@ -77,7 +80,7 @@ class Config:
         valid_arms = {"classical", "quantum", "control", "control_scaled", "quantum_attn", "fused"}
         if self.arm not in valid_arms:
             raise ValueError(f"arm must be one of {valid_arms}, got {self.arm!r}")
-        valid_variants = {"large", "small", "none", "frozen_resnet18"}
+        valid_variants = {"large", "small", "none", "frozen_resnet18", "rich_features"}
         if self.backbone_variant not in valid_variants:
             raise ValueError(
                 f"backbone_variant must be one of {valid_variants}, got {self.backbone_variant!r}"

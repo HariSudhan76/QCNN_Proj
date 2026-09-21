@@ -71,3 +71,11 @@ def test_none_backbone_pool_grid_sets_width():
 
 def test_none_backbone_default_grid_unchanged():
     assert Backbone(in_channels=4, variant="none").feature_width == 24
+
+
+def test_rich_features_backbone_is_identity_pass_through():
+    backbone = Backbone(in_channels=4, variant="rich_features", rich_feature_dim=256)
+    assert backbone.feature_width == 256
+    assert _param_count(backbone) == 0
+    x = torch.rand(3, 256)
+    assert torch.equal(backbone(x), x)

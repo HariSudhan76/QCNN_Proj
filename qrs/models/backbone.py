@@ -16,6 +16,13 @@ Three variants:
     raw, non-adapted summary of the image? Rules out "the backbone is doing
     the real work and hiding the slot's contribution" as an explanation for
     a null result.
+  - "rich_features": zero learnable parameters, like "none", but the input
+    is already the final feature vector -- qrs.data.preprocessing's
+    "rich2" pipeline (fixed mean+std pooling + a fixed Gabor filter bank,
+    both cached like the HSI+Edge tensor). This variant is just an identity
+    pass-through; feature_width is read from the tensor it's given (set via
+    `rich_feature_dim` at construction, since the loader determines it, not
+    the backbone).
 
 `self.feature_width` is the actual output width in all three cases --
 callers that need to size a projection off the backbone should read that
@@ -27,7 +34,7 @@ from __future__ import annotations
 import torch
 import torch.nn as nn
 
-BACKBONE_VARIANTS = ("large", "small", "none")
+BACKBONE_VARIANTS = ("large", "small", "none", "rich_features")
 _NONE_VARIANT_POOL_GRID = (2, 3)  # 4 channels x 2x3 = 24-d, matching "small"
 
 
@@ -46,6 +53,7 @@ class Backbone(nn.Module):
         feature_width: int = 128,
         variant: str = "large",
         pool_grid: tuple[int, int] = _NONE_VARIANT_POOL_GRID,
+        rich_feature_dim: int = 256,
     ) -> None:
         super().__init__()
         if variant not in BACKBONE_VARIANTS:
@@ -65,9 +73,11 @@ class Backbone(nn.Module):
             self.block2 = _conv_block(8, 16)
             self.block3 = _conv_block(16, 24)
             self.feature_width = 24
-        else:  # "none": no blocks, no learnable parameters at all
+        elif variant == "none":  # no blocks, no learnable parameters at all
             self.fixed_pool = nn.AdaptiveAvgPool2d(tuple(pool_grid))
             self.feature_width = in_channels * pool_grid[0] * pool_grid[1]
+        else:  # "rich_features": identity pass-through, input is already the final vector
+            self.feature_width = rich_feature_dim
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         if self.variant == "large":
@@ -83,6 +93,8 @@ class Backbone(nn.Module):
             x = self.pool(self.block3(x))  # 16 -> 8
             x = self.gap(x)  # (B, feature_width, 1, 1)
             return x.flatten(1)
-        else:  # "none"
+        elif self.variant == "none":
             x = self.fixed_pool(x)  # (B, in_channels, *pool_grid), no learnable params
             return x.flatten(1)  # (B, feature_width)
+        else:  # "rich_features": x is already (B, feature_width)
+            return x

@@ -156,3 +156,29 @@ def test_frozen_resnet18_rejects_attention():
     config = Config(arm="quantum", backbone_variant="frozen_resnet18", attention=True)
     with _pytest.raises(ValueError, match="attention"):
         build_model(config)
+
+
+def test_nobackbone_rich2_configs_match_at_54_params(capsys):
+    from qrs.config import load_config
+
+    quantum_cfg = load_config("configs/nobackbone_rich2_quantum.yaml")
+    control_cfg = load_config("configs/nobackbone_rich2_control.yaml")
+    classical_cfg = load_config("configs/nobackbone_rich2_classical.yaml")
+    for cfg in (quantum_cfg, control_cfg, classical_cfg):
+        assert cfg.backbone_variant == "rich_features"
+        assert cfg.rich_feature_dim == 256
+        assert cfg.epochs == 30
+
+    quantum = build_model(quantum_cfg)
+    assert quantum.backbone.feature_width == 256
+    assert quantum.n_quantum_params == 54
+
+    control = build_model(control_cfg)
+    assert "target_params=54 actual_params=54" in capsys.readouterr().out
+    assert control.n_quantum_params == 0
+
+    classical = build_model(classical_cfg)
+    n = lambda m: sum(p.numel() for p in m.parameters() if p.requires_grad)  # noqa: E731
+    assert n(quantum) == 256 * 6 + 6 + 54 + 6 * 10 + 10  # compression + slot + head
+    assert n(control) == n(quantum)
+    assert n(classical) == 256 * 10 + 10  # Identity + head only, no slot

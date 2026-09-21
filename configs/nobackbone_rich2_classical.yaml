@@ -1,0 +1,12 @@
+# Richer fixed (zero-param) feature vector for the no-backbone design: fixed
+# mean+std pooling (4x4 grid) of the HSI+Edge tensor + a fixed Gabor filter
+# bank (4 orientations x 2 frequencies), both cached like the existing
+# HSI+Edge preprocessing. 256-d input (was 24-d/64-d with mean-only
+# pooling). Same 6-qubit x 3-layer (54-param) slot design as
+# nobackbone_classical.yaml / grid4x4_classical.yaml -- only the input's richness changes.
+extends: base.yaml
+arm: classical
+backbone_variant: rich_features
+n_qubits: 6
+n_layers: 3
+seeds: [0, 1, 2]
