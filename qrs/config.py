@@ -77,7 +77,7 @@ class Config:
         valid_arms = {"classical", "quantum", "control", "control_scaled", "quantum_attn", "fused"}
         if self.arm not in valid_arms:
             raise ValueError(f"arm must be one of {valid_arms}, got {self.arm!r}")
-        valid_variants = {"large", "small", "none"}
+        valid_variants = {"large", "small", "none", "frozen_resnet18"}
         if self.backbone_variant not in valid_variants:
             raise ValueError(
                 f"backbone_variant must be one of {valid_variants}, got {self.backbone_variant!r}"

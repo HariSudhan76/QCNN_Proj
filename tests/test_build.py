@@ -129,3 +129,30 @@ def test_control_scaled_matches_control_params_and_squashes_input():
 
     grid = build_model(load_config("configs/phase2/grid4x4_control_scaled.yaml"))
     assert n(grid) == 514
+
+
+def test_frozen_resnet18_backbone_builds_across_arms():
+    import pytest as _pytest
+
+    _pytest.importorskip("torchvision")
+    from qrs.config import Config
+    from qrs.models.build import build_model
+
+    for arm in ("classical", "quantum", "control"):
+        config = Config(arm=arm, backbone_variant="frozen_resnet18", n_qubits=6, n_layers=3)
+        model = build_model(config)
+        assert model.backbone.feature_width == 512
+        # Frozen backbone contributes zero trainable parameters.
+        assert sum(p.numel() for p in model.backbone.parameters() if p.requires_grad) == 0
+
+
+def test_frozen_resnet18_rejects_attention():
+    import pytest as _pytest
+
+    _pytest.importorskip("torchvision")
+    from qrs.config import Config
+    from qrs.models.build import build_model
+
+    config = Config(arm="quantum", backbone_variant="frozen_resnet18", attention=True)
+    with _pytest.raises(ValueError, match="attention"):
+        build_model(config)

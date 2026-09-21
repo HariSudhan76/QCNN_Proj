@@ -12,6 +12,7 @@ from qrs.data.eurosat import CLASSES
 from qrs.models.attention import ChannelAttentionGate
 from qrs.models.backbone import Backbone
 from qrs.models.classical_control import build_parameter_matched_control
+from qrs.models.frozen_backbone import FrozenResNet18Backbone
 from qrs.models.heads import ClassifierHead
 from qrs.models.quantum_layer import QuantumLayer, quantum_param_count
 
@@ -53,14 +54,23 @@ def build_model(config: Config) -> nn.Module:
     # usable as an ablation switch on any arm.
     effective_arm = "quantum" if config.arm == "quantum_attn" else config.arm
     use_attention = config.attention or config.arm == "quantum_attn"
+    if config.backbone_variant == "frozen_resnet18" and use_attention:
+        # ChannelAttentionGate gates the 4 HSI+Edge channels; the frozen
+        # backbone's input is 3-channel RGB, so there is nothing for it to gate.
+        raise ValueError(
+            "attention is not supported with backbone_variant='frozen_resnet18' (RGB input)"
+        )
     attention = ChannelAttentionGate(n_channels=4) if use_attention else None
 
-    backbone = Backbone(
-        in_channels=4,
-        feature_width=config.feature_width,
-        variant=config.backbone_variant,
-        pool_grid=config.none_pool_grid,
-    )
+    if config.backbone_variant == "frozen_resnet18":
+        backbone = FrozenResNet18Backbone()
+    else:
+        backbone = Backbone(
+            in_channels=4,
+            feature_width=config.feature_width,
+            variant=config.backbone_variant,
+            pool_grid=config.none_pool_grid,
+        )
     # Read the backbone's real output width rather than assuming config.feature_width
     # -- the "small" variant is a fixed 8/16/24 architecture whose output is 24,
     # independent of config.feature_width.

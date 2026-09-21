@@ -80,3 +80,15 @@ def test_preprocess_tile_shape_and_range():
     assert out.shape == (4, 64, 64)
     assert out.dtype == np.float32
     assert np.isfinite(out).all()
+
+
+def test_preprocess_tile_rgb_shape_and_normalisation():
+    from qrs.data.preprocessing import preprocess_tile_rgb
+
+    rgb = np.full((8, 8, 3), 0.5, dtype=np.float64)
+    out = preprocess_tile_rgb(rgb)
+    assert out.shape == (3, 8, 8)
+    assert out.dtype == np.float32
+    # (0.5 - mean) / std, per ImageNet channel stats -- not just passed through.
+    assert not np.allclose(out[0], 0.5)
+    assert np.isfinite(out).all()

@@ -12,16 +12,23 @@ from torch.utils.data import DataLoader, Dataset
 
 from qrs.config import Config
 from qrs.data.eurosat import CLASSES, download_eurosat, load_or_create_split
-from qrs.data.preprocessing import preprocess_tile_cached
+from qrs.data.preprocessing import preprocess_tile_cached, preprocess_tile_rgb
 
 CLASS_TO_IDX = {cls: idx for idx, cls in enumerate(CLASSES)}
 
 
 class EuroSATDataset(Dataset):
-    def __init__(self, extracted_dir: str | Path, cache_dir: str | Path, tile_paths: list[str]) -> None:
+    def __init__(
+        self,
+        extracted_dir: str | Path,
+        cache_dir: str | Path,
+        tile_paths: list[str],
+        input_mode: str = "hsi_edge",
+    ) -> None:
         self.extracted_dir = Path(extracted_dir)
         self.preprocess_cache_dir = Path(cache_dir) / "preprocessed"
         self.tile_paths = tile_paths
+        self.input_mode = input_mode
 
     def __len__(self) -> int:
         return len(self.tile_paths)
@@ -33,7 +40,10 @@ class EuroSATDataset(Dataset):
         img = Image.open(self.extracted_dir / rel_path).convert("RGB")
         rgb = np.asarray(img, dtype=np.float64) / 255.0
 
-        tensor = preprocess_tile_cached(rgb, self.preprocess_cache_dir)
+        if self.input_mode == "rgb":
+            tensor = preprocess_tile_rgb(rgb)  # cheap normalisation, no disk cache needed
+        else:
+            tensor = preprocess_tile_cached(rgb, self.preprocess_cache_dir)
         return torch.from_numpy(tensor), label
 
 
@@ -41,9 +51,13 @@ def build_dataloaders(config: Config, seed: int) -> tuple[DataLoader, DataLoader
     extracted_dir = download_eurosat(config.data_dir)
     split = load_or_create_split(extracted_dir, config.cache_dir, config.split, seed)
 
-    train_ds = EuroSATDataset(extracted_dir, config.cache_dir, split.train)
-    val_ds = EuroSATDataset(extracted_dir, config.cache_dir, split.val)
-    test_ds = EuroSATDataset(extracted_dir, config.cache_dir, split.test)
+    # The frozen pretrained backbone needs ImageNet-normalised RGB; every
+    # other backbone_variant uses the project's HSI+Edge tensor.
+    input_mode = "rgb" if config.backbone_variant == "frozen_resnet18" else "hsi_edge"
+
+    train_ds = EuroSATDataset(extracted_dir, config.cache_dir, split.train, input_mode)
+    val_ds = EuroSATDataset(extracted_dir, config.cache_dir, split.val, input_mode)
+    test_ds = EuroSATDataset(extracted_dir, config.cache_dir, split.test, input_mode)
 
     train_loader = DataLoader(train_ds, batch_size=config.batch_size, shuffle=True)
     val_loader = DataLoader(val_ds, batch_size=config.batch_size, shuffle=False)

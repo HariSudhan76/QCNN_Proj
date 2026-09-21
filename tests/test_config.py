@@ -64,3 +64,10 @@ def test_invalid_arm_rejected():
 def test_invalid_split_rejected():
     with pytest.raises(ValueError):
         Config(split=(0.5, 0.5, 0.5))
+
+
+def test_frozen_resnet18_is_a_valid_backbone_variant():
+    from qrs.config import Config
+
+    config = Config(backbone_variant="frozen_resnet18")
+    assert config.backbone_variant == "frozen_resnet18"

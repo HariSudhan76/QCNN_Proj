@@ -1,0 +1,12 @@
+# High-accuracy RGB experiment: frozen pretrained ResNet-18 (zero trainable
+# params, ImageNet weights) feeding the same 6-qubit slot design as
+# nobackbone_control.yaml. Backbone is identical/static across arms, same as
+# backbone_variant "none", but supplies pretrained features instead of raw
+# pooled channel averages -- the route to accuracy the HSI+Edge no-backbone
+# design structurally cannot reach.
+extends: ../base.yaml
+arm: control
+backbone_variant: frozen_resnet18
+n_qubits: 6
+n_layers: 3
+seeds: [0]

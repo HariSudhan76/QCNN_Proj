@@ -18,6 +18,26 @@ import numpy as np
 
 _EPS = 1e-8
 
+# Standard ImageNet normalisation, required by torchvision's pretrained
+# ResNet-18 weights (qrs.models.frozen_backbone). Only used when a config's
+# backbone_variant is "frozen_resnet18" -- every other arm uses the HSI+Edge
+# tensor below instead.
+_IMAGENET_MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
+_IMAGENET_STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)
+
+
+def preprocess_tile_rgb(rgb: np.ndarray) -> np.ndarray:
+    """RGB tile -> ImageNet-normalised (3, H, W) tensor.
+
+    Args:
+        rgb: array of shape (H, W, 3), float in [0, 1].
+
+    Returns:
+        array of shape (3, H, W), dtype float32.
+    """
+    normed = (rgb.astype(np.float32) - _IMAGENET_MEAN) / _IMAGENET_STD
+    return np.transpose(normed, (2, 0, 1)).astype(np.float32)
+
 
 def rgb_to_hsi(rgb: np.ndarray) -> np.ndarray:
     """Convert an RGB image to HSI.
