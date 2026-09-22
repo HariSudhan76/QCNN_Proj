@@ -288,3 +288,19 @@ def test_control_tanh_uses_tanh_not_relu_and_matches_control_params():
     hidden = tanh.middle[1][1]
     assert isinstance(hidden, torch.nn.Tanh)
     assert not isinstance(ctl.middle[1][1], torch.nn.Tanh)
+
+
+def test_q10l1_control_tanh_matches_params_and_uses_tanh():
+    import torch
+
+    from qrs.config import load_config
+
+    cfg = load_config("configs/nobackbone_rich2_q10l1_control_tanh.yaml")
+    assert cfg.arm == "control_tanh"
+    assert (cfg.n_qubits, cfg.n_layers) == (10, 1)
+
+    m = build_model(cfg)
+    n = sum(p.numel() for p in m.parameters() if p.requires_grad)
+    assert n == 2710
+    assert m.n_quantum_params == 0
+    assert isinstance(m.middle[1][1], torch.nn.Tanh)

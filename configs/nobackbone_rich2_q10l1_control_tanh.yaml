@@ -1,0 +1,8 @@
+# Same as nobackbone_rich2_q10l1_control.yaml (10 qubits x 1 layer = 30
+# params, rich2 256-d input) but Tanh instead of ReLU in the control's
+# hidden layer. At this budget the ReLU control is forced into a 1-unit
+# hidden layer (10->1->10) -- the same shape that collapsed at q8l1 (8->1->8)
+# and was fixed by Tanh at q8l2 (8->3->8). Tests whether that fix
+# generalises to an even narrower hidden width.
+extends: nobackbone_rich2_q10l1_control.yaml
+arm: control_tanh
