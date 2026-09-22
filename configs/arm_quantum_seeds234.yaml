@@ -1,0 +1,6 @@
+# Resume config: arm_quantum.yaml (large CNN backbone, 8q x 3L, real Phase 1
+# design) was interrupted after seeds 0-1 logged to results.csv (system
+# restart). Runs only the missing seeds so results.csv doesn't get
+# duplicate rows.
+extends: arm_quantum.yaml
+seeds: [2, 3, 4]
