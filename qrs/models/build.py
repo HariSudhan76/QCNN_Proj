@@ -95,16 +95,24 @@ def build_model(config: Config) -> nn.Module:
         head = ClassifierHead(config.n_qubits, n_classes)
         return ArmModel(backbone, middle, head, attention)
 
-    if effective_arm in ("control", "control_scaled"):
+    if effective_arm in ("control", "control_scaled", "control_tanh"):
         compression = nn.Linear(feat_width, config.n_qubits)
         target_params = quantum_param_count(config.n_qubits, config.n_layers)
-        control = build_parameter_matched_control(config.n_qubits, config.n_qubits, target_params)
+        activation = nn.Tanh if effective_arm == "control_tanh" else nn.ReLU
+        control = build_parameter_matched_control(
+            config.n_qubits, config.n_qubits, target_params, activation=activation
+        )
         if effective_arm == "control_scaled":
             # Same as control, but the slot sees the quantum layer's [0, pi]
             # input range. Separates "quantum structure helps" from "bounded
             # input scaling helps". Zero extra parameters.
             middle = nn.Sequential(compression, SquashToAngleRange(), control)
         else:
+            # "control_tanh" differs from "control" only in the hidden
+            # layer's activation (see build_parameter_matched_control) --
+            # tests whether a dying-ReLU collapse at very narrow hidden
+            # widths, not anything about the quantum comparison, explains an
+            # observed control failure/gap.
             middle = nn.Sequential(compression, control)
         # No quantum parameters in the control arm by construction.
         middle.n_quantum_params = 0

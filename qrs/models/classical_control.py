@@ -19,6 +19,7 @@ def build_parameter_matched_control(
     out_features: int,
     target_params: int,
     tolerance: float = 0.05,
+    activation: type[nn.Module] = nn.ReLU,
 ) -> nn.Module:
     """Classical MLP, in_features -> (optional hidden) -> out_features, with a
     trainable parameter count within `tolerance` of `target_params`.
@@ -30,6 +31,14 @@ def build_parameter_matched_control(
     single hidden unit already changes the count by in+out+1. Raises
     AssertionError if nothing within tolerance is found -- a hard failure,
     not a warning.
+
+    `activation` defaults to ReLU (the original design). At small parameter
+    budgets with wide in/out dimensions, the search is forced into a
+    single-digit (sometimes single-unit) hidden layer -- a dead ReLU there
+    is a known failure mode that permanently collapses the whole block to a
+    constant output. Pass `nn.Tanh` to test whether that specific failure
+    mode, not anything about the classical/quantum comparison itself, is
+    behind an observed accuracy gap or training collapse.
     """
     candidates: list[nn.Module] = [
         nn.Linear(in_features, out_features, bias=True),
@@ -43,7 +52,7 @@ def build_parameter_matched_control(
                 candidates.append(
                     nn.Sequential(
                         nn.Linear(in_features, h, bias=bias1),
-                        nn.ReLU(),
+                        activation(),
                         nn.Linear(h, out_features, bias=bias2),
                     )
                 )

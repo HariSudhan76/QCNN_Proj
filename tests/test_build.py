@@ -266,3 +266,25 @@ def test_nobackbone_rich2_q10_configs_match_params(capsys):
         control = build_model(control_cfg)
         assert f"target_params={params} actual_params={params}" in capsys.readouterr().out
         assert control.n_quantum_params == 0
+
+
+def test_control_tanh_uses_tanh_not_relu_and_matches_control_params():
+    import torch
+
+    from qrs.config import load_config
+
+    ctl_cfg = load_config("configs/nobackbone_rich2_q8l2_control.yaml")
+    tanh_cfg = load_config("configs/nobackbone_rich2_q8l2_control_tanh.yaml")
+    assert tanh_cfg.arm == "control_tanh"
+    # Everything except arm is identical, per CLAUDE.md rule 1.
+    assert {**vars(ctl_cfg), "arm": None} == {**vars(tanh_cfg), "arm": None}
+
+    ctl = build_model(ctl_cfg)
+    tanh = build_model(tanh_cfg)
+    n = lambda m: sum(p.numel() for p in m.parameters() if p.requires_grad)  # noqa: E731
+    assert n(ctl) == n(tanh) == 2194
+    assert tanh.n_quantum_params == 0
+
+    hidden = tanh.middle[1][1]
+    assert isinstance(hidden, torch.nn.Tanh)
+    assert not isinstance(ctl.middle[1][1], torch.nn.Tanh)

@@ -1,0 +1,9 @@
+# Same as nobackbone_rich2_q8l2_control.yaml (8 qubits x 2 layers = 48
+# params, rich2 256-d input), but the control's hidden-layer activation is
+# Tanh instead of ReLU. q8l2's parameter-matched control was forced into a
+# 3-unit hidden layer (8->3->8) and collapsed to a constant predictor in 1
+# of 3 seeds -- a classic dying-ReLU failure mode at very narrow hidden
+# widths. Tests whether that specific bug, not the quantum-vs-control
+# comparison itself, explains the collapse and part of the accuracy gap.
+extends: nobackbone_rich2_q8l2_control.yaml
+arm: control_tanh
